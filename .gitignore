@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.sqlite3 # Good to add if you plan to use SQLite later
+instance/ # Flask instance folder
+.DS_Store # Mac specific
