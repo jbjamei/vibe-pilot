@@ -1,20 +1,20 @@
 services:
   - type: web
-    name: vibe-pilot          # Should match your service name on Render
+    name: vibe-pilot
     env: python
-    region: oregon            # Or your service's actual region
-    plan: free                # Or your current plan
+    region: oregon # Or your service's actual region
+    plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn app:app --timeout 300 --workers 1" # Timeout 300s, 1 worker
+    startCommand: "gunicorn app:app --timeout 300 --workers 1"
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11"         # Match your Python version
+        value: "3.11" # Match your Python version
       - key: GEMINI_API_KEY
-        fromSecret: true      # Ensure this secret is set in Render's Environment
-      - key: NUMBA_DISABLE_CACHING
+        fromSecret: true # Ensure this secret is set in Render's Environment
+      - key: NUMBA_DISABLE_CACHING # Corrected indentation
         value: "1"
-      - key: NUMBA_NUM_THREADS
+      - key: NUMBA_NUM_THREADS   # Corrected indentation
         value: "1"
     build:
       packages: # For installing system packages
