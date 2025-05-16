@@ -34,29 +34,27 @@ except Exception as e:
     gemini_llm = None
 # --- End Gemini Config ---
 
+# --- Spotify API Configuration (FULLY COMMENTED OUT) ---
+# # (The fully commented out Spotify block as provided before)
+# --- End Spotify Config ---
+
 # --- Text-based Genre Identification Function ---
-def get_music_genre(song_title, artist_name, user_hint=None): # Added user_hint
+def get_music_genre(song_title, artist_name):
     if not gemini_llm:
         print("DEBUG: get_music_genre called but gemini_llm is not initialized.")
         return "Error: Text-based genre API not configured. Check server logs."
     if not song_title or not artist_name:
         return "Please provide both song title and artist name."
 
-    hint_text = ""
-    if user_hint:
-        hint_text = f"The user has provided a hint that the genre might be related to: '{user_hint}'. Please consider this hint."
-
     prompt = f"""
     You are a music expert specializing in genre identification.
     For the song "{song_title}" by artist "{artist_name}", identify its specific music genre and sub-genre.
-    {hint_text}
     Provide a concise and accurate answer.
     Examples of desired output format:
     - Tropical Progressive House
     - Dark Moody Dubstep
     - Tech House
     - Progressive Rock
-    - Psy-Dub (if hint suggests something like 'psychedelic bass')
 
     If you are unsure about a very specific sub-genre, try to provide the closest broader genre.
     For example, if you can't pinpoint "Melodic Progressive House", "Progressive House" or even "House" would be acceptable.
@@ -68,7 +66,7 @@ def get_music_genre(song_title, artist_name, user_hint=None): # Added user_hint
     Identified Genre:
     """
     try:
-        print(f"DEBUG: Sending text prompt to Gemini for: Song='{song_title}', Artist='{artist_name}', Hint='{user_hint or 'None'}'")
+        print(f"DEBUG: Sending text prompt to Gemini for: Song='{song_title}', Artist='{artist_name}'")
         response = gemini_llm.generate_content(prompt)
         
         genre_text = ""
@@ -86,7 +84,7 @@ def get_music_genre(song_title, artist_name, user_hint=None): # Added user_hint
             return "Error: Failed to parse response from Gemini API (text). Check server logs."
 
         cleaned_genre = genre_text.strip().replace("*", "").replace("`", "")
-        print(f"DEBUG (Gemini Text): Cleaned genre: '{cleaned_genre}' (Hint was: '{user_hint or 'None'}')")
+        print(f"DEBUG (Gemini Text): Cleaned genre: '{cleaned_genre}'")
 
         if not cleaned_genre:
             return "Could not determine genre (API returned empty or only formatting characters)."
@@ -100,67 +98,56 @@ def get_music_genre(song_title, artist_name, user_hint=None): # Added user_hint
 # --- Audio Feature Extraction and Description ---
 def describe_audio_features(y, sr):
     description_parts = []
-    # (Feature extraction code remains the same as the last version)
-    # Tempo
+
+    # --- MODIFIED TEMPO EXTRACTION ---
     try:
         tempo_val, _ = librosa.beat.beat_track(y=y, sr=sr)
-        if isinstance(tempo_val, (float, np.float64)): 
+        if isinstance(tempo_val, (float, np.float_)): # Check if it's a scalar float
             description_parts.append(f"Estimated tempo: {tempo_val:.2f} BPM.")
-        elif isinstance(tempo_val, np.ndarray) and tempo_val.size == 1: 
+        elif isinstance(tempo_val, np.ndarray) and tempo_val.size == 1: # If it's a single-element array
             description_parts.append(f"Estimated tempo: {tempo_val.item():.2f} BPM.")
         else:
+            # This case handles if tempo_val is an array with multiple candidates or another unexpected type
             print(f"DEBUG: Tempo detection returned multiple candidates or unexpected type: {tempo_val}")
-            description_parts.append("Tempo estimation was ambiguous.")
+            description_parts.append("Tempo estimation was ambiguous (multiple candidates or unexpected result).")
     except Exception as e: 
         print(f"Librosa Error (tempo): {e}")
-        traceback.print_exc()
-        description_parts.append("Tempo could not be reliably estimated.")
+        description_parts.append("Tempo could not be reliably estimated due to an error.")
+    # --- END MODIFIED TEMPO EXTRACTION ---
 
-    # MFCCs
     try:
         mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
         mfccs_mean = np.mean(mfccs, axis=1)
-        description_parts.append(f"MFCCs (timbral texture indicator, first 3 of 13 means): {mfccs_mean[:3].round(2).tolist()}.")
+        # Using .tolist() for mfccs_mean[:3] as it's an array and f-string formatting can be tricky with raw arrays.
+        description_parts.append(f"MFCCs means (first 3 of 13): {mfccs_mean[:3].round(2).tolist()}.")
     except Exception as e: 
         print(f"Librosa Error (MFCCs): {e}")
-        description_parts.append("MFCCs could not be extracted.")
+        # Optionally add a part to description_parts indicating MFCC error
+        # description_parts.append("MFCC features could not be extracted.")
 
-    # Spectral Centroid
     try:
         cent = librosa.feature.spectral_centroid(y=y, sr=sr)
-        description_parts.append(f"Average spectral centroid (brightness indicator): {np.mean(cent):.2f} Hz.")
+        description_parts.append(f"Average spectral centroid (brightness indicator): {np.mean(cent):.2f}.")
     except Exception as e: 
         print(f"Librosa Error (spectral_centroid): {e}")
-        description_parts.append("Spectral centroid could not be extracted.")
+        # description_parts.append("Spectral centroid could not be extracted.")
 
-    # Zero-Crossing Rate
     try:
         zcr = librosa.feature.zero_crossing_rate(y)
         description_parts.append(f"Average zero-crossing rate (percussiveness/noisiness indicator): {np.mean(zcr):.4f}.")
     except Exception as e: 
         print(f"Librosa Error (ZCR): {e}")
-        description_parts.append("Zero-crossing rate could not be extracted.")
+        # description_parts.append("Zero-crossing rate could not be extracted.")
 
-    # Spectral Bandwidth
-    try:
-        spec_bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
-        description_parts.append(f"Average spectral bandwidth (spectrum width indicator): {np.mean(spec_bw):.2f} Hz.")
-    except Exception as e:
-        print(f"Librosa Error (spectral_bandwidth): {e}")
-        description_parts.append("Spectral bandwidth could not be extracted.")
-
-    # Spectral Rolloff
-    try:
-        rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr, roll_percent=0.85)
-        description_parts.append(f"Average spectral rolloff (frequency capturing 85% of energy, related to brightness/skewness): {np.mean(rolloff):.2f} Hz.")
-    except Exception as e:
-        print(f"Librosa Error (spectral_rolloff): {e}")
-        description_parts.append("Spectral rolloff could not be extracted.")
-
-    if not description_parts or all("could not be" in part or "ambiguous" in part for part in description_parts): 
+    if not description_parts: 
         return "Could not extract significant audio features."
     
-    return " ".join(filter(None, description_parts))
+    # Filter out any None entries that might have occurred if a feature extraction failed
+    # and we chose not to append an error message for it. (Though current code appends error indications)
+    # valid_descriptions = [desc for desc in description_parts if desc is not None]
+    # return " ".join(valid_descriptions) if valid_descriptions else "Could not extract significant audio features."
+    
+    return " ".join(description_parts)
 # --- End Audio Feature Extraction ---
 
 # --- Flask Routes ---
@@ -169,30 +156,25 @@ def index():
     genre_result = None
     song_title_input = ""
     artist_name_input = ""
-    user_hint_input = "" # Initialize user_hint
 
     if request.method == 'POST':
         song_title_input = request.form.get('song_title', '').strip()
         artist_name_input = request.form.get('artist_name', '').strip()
-        user_hint_input = request.form.get('user_hint', '').strip() # Get hint from form
         
         if not gemini_llm:
             genre_result = "Error: Text-based genre API not configured. Check server logs."
         elif not song_title_input or not artist_name_input:
             genre_result = "Please provide both song title and artist name for text-based search."
         else:
-            # Pass hint to get_music_genre
-            genre_result = get_music_genre(song_title_input, artist_name_input, user_hint_input) 
+            genre_result = get_music_genre(song_title_input, artist_name_input)
 
     return render_template('index.html',
                            genre_result=genre_result,
                            song_title_input=song_title_input,
-                           artist_name_input=artist_name_input,
-                           user_hint_input=user_hint_input) # Pass hint to template
+                           artist_name_input=artist_name_input)
 
 @app.route('/search_streaming', methods=['POST'])
 def search_streaming():
-    # This function remains the same as it's just for Deezer search
     data = request.get_json()
     song_title = data.get('song_title')
     artist_name = data.get('artist_name')
@@ -266,25 +248,27 @@ def analyze_audio_genre():
     preview_url = data.get('preview_url')
     song_title_for_prompt = data.get('song_title', 'the provided audio clip') 
     artist_name_for_prompt = data.get('artist_name', 'the artist')
-    user_hint = data.get('user_hint', None) # Get hint from JSON payload
 
     if not preview_url:
         return jsonify({"error": "Preview URL is required"}), 400
     
-    temp_audio_file_path = None 
+    temp_audio_file_path = None # Initialize to ensure it's defined for finally block
     try:
         print(f"DEBUG: Downloading audio from {preview_url}")
         audio_response = req_lib.get(preview_url, timeout=15) 
         audio_response.raise_for_status()
-        print(f"DEBUG: Deezer audio Content-Type: {audio_response.headers.get('Content-Type')}") 
+        print(f"DEBUG: Deezer audio Content-Type: {audio_response.headers.get('Content-Type')}") # Content-Type check
         
+        # --- Load via temporary file ---
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio_file_obj:
             temp_audio_file_obj.write(audio_response.content)
             temp_audio_file_path = temp_audio_file_obj.name 
         
         print(f"DEBUG: Audio content saved to temporary file: {temp_audio_file_path}")
 
+        # Try loading from the file path
         y, sr = librosa.load(temp_audio_file_path, duration=30)
+        # --- End temporary file loading ---
             
         print(f"DEBUG: Audio loaded. Duration: {librosa.get_duration(y=y, sr=sr):.2f}s, SR: {sr}Hz")
 
@@ -292,83 +276,49 @@ def analyze_audio_genre():
         print(f"DEBUG: Audio feature description: {feature_description}")
 
         if "Could not extract significant audio features" in feature_description:
-            return jsonify({"genre_by_audio": "Could not analyze audio effectively (feature extraction failed or insufficient data).", "preview_url": preview_url}), 200
-        
-        failed_feature_count = feature_description.count("could not be reliably estimated") + \
-                               feature_description.count("could not be extracted") + \
-                               feature_description.count("estimation was ambiguous")
-        
-        parts = feature_description.split('. ')
-        successful_feature_count = 0
-        for part in parts:
-            if "BPM" in part or "Hz" in part or "means" in part or "rate" in part:
-                 if not ("could not be" in part or "ambiguous" in part):
-                    successful_feature_count +=1
-
-        if successful_feature_count < 2 : 
-             return jsonify({"genre_by_audio": f"Could not analyze audio effectively (insufficient features extracted: {successful_feature_count} successful, {failed_feature_count} failed).", "preview_url": preview_url}), 200
-
-        hint_prompt_segment = ""
-        if user_hint and user_hint.strip():
-            hint_prompt_segment = f"A user-provided hint suggests the genre might be related to '{user_hint.strip()}'. Consider this hint to help interpret the audio features, especially if they are ambiguous, but prioritize the sonic characteristics evident in the features if there is a clear contradiction. For example, a high BPM might normally suggest an energetic genre, but a hint like 'half-time feel' or 'dub' could mean the perceived tempo is slower."
+            return jsonify({"genre_by_audio": "Could not analyze audio effectively (feature extraction failed).", "preview_url": preview_url}), 200
 
         audio_prompt = f"""
-        You are a music expert specializing in genre identification from detailed audio features.
-        Consider the interplay of all provided features to determine the specific music genre and sub-genre for THE PROVIDED AUDIO CLIP.
-        {hint_prompt_segment}
-        Pay attention to how features like tempo, timbral texture (MFCCs), brightness (spectral centroid, rolloff), spectrum width (spectral bandwidth), and percussiveness (zero-crossing rate) combine.
-        For example, low tempo with wide spectral bandwidth and specific timbral qualities might indicate an ambient or atmospheric genre.
-        A high tempo might suggest an energetic genre, but also consider if other features or hints suggest a different interpretation of that tempo (e.g., half-time feel).
-
+        You are a music expert specializing in genre identification from audio features.
+        Based on the following description of audio features for the song "{song_title_for_prompt}" by "{artist_name_for_prompt}", identify its specific music genre and sub-genre.
         Provide a concise and accurate answer. Be specific with sub-genres if possible.
         Examples of desired output format:
         - Tropical Progressive House
-        - Ambient Drone
         - Dark Moody Dubstep
         - Melodic Techno
-        - Psy-Dub
-        - Downtempo Psybass
         - Liquid Drum and Bass
-        - Ethereal Wave
         - Classic Rock (based on features)
         - Psychedelic Trance (based on features)
 
         Audio Feature Description:
         "{feature_description}"
 
-        If the features (and any hint) are highly ambiguous or truly insufficient for a specific sub-genre, provide the closest broader genre.
+        If the features are too generic or insufficient for a specific sub-genre, try to provide the closest broader genre.
         If highly uncertain, state "Could not confidently determine genre from audio features."
         Do not add any conversational fluff, just the genre.
 
         Identified Genre from Audio:
         """
         
-        print(f"DEBUG: Sending audio feature prompt to Gemini (Blind Analysis). Hint: '{user_hint or 'None'}'. Original Song: {song_title_for_prompt}, Artist: {artist_name_for_prompt}")
+        print("DEBUG: Sending audio feature prompt to Gemini.")
         gemini_response = gemini_llm.generate_content(audio_prompt)
         
         genre_text_audio = ""
         if hasattr(gemini_response, 'text') and gemini_response.text:
             genre_text_audio = gemini_response.text
         elif gemini_response.candidates and \
-             response.candidates[0].content and \
-             response.candidates[0].content.parts and \
-             response.candidates[0].content.parts[0].text:
-            genre_text_audio = response.candidates[0].content.parts[0].text # Corrected to response, not gemini_response here if using the broader response structure
-        else: # Fallback or if using direct text from gemini_response
-            if hasattr(gemini_response, 'candidates') and \
-                gemini_response.candidates[0].content and \
-                gemini_response.candidates[0].content.parts and \
-                gemini_response.candidates[0].content.parts[0].text:
-                genre_text_audio = gemini_response.candidates[0].content.parts[0].text
-            else:
-                print(f"DEBUG: Could not extract audio genre text using common attributes. Full response: {gemini_response}")
-                if hasattr(gemini_response, 'prompt_feedback') and gemini_response.prompt_feedback and gemini_response.prompt_feedback.block_reason:
-                    return jsonify({"genre_by_audio": f"Blocked by API (Audio): {gemini_response.prompt_feedback.block_reason_message or gemini_response.prompt_feedback.block_reason}", "preview_url": preview_url})
-                return jsonify({"genre_by_audio": "Error: Failed to parse response from Gemini API (audio).", "preview_url": preview_url})
-
+             gemini_response.candidates[0].content and \
+             gemini_response.candidates[0].content.parts and \
+             gemini_response.candidates[0].content.parts[0].text:
+            genre_text_audio = gemini_response.candidates[0].content.parts[0].text
+        else:
+            print(f"DEBUG: Could not extract audio genre text using common attributes. Full response: {gemini_response}")
+            if hasattr(gemini_response, 'prompt_feedback') and gemini_response.prompt_feedback and gemini_response.prompt_feedback.block_reason:
+                return jsonify({"genre_by_audio": f"Blocked by API (Audio): {gemini_response.prompt_feedback.block_reason_message or gemini_response.prompt_feedback.block_reason}", "preview_url": preview_url})
+            return jsonify({"genre_by_audio": "Error: Failed to parse response from Gemini API (audio).", "preview_url": preview_url})
 
         cleaned_genre_audio = genre_text_audio.strip().replace("*", "").replace("`", "")
-        print(f"DEBUG (Audio Gemini - Blind Analysis with Hint): Cleaned genre: '{cleaned_genre_audio}' (Hint was: '{user_hint or 'None'}')")
+        print(f"DEBUG (Audio Gemini): Cleaned genre: '{cleaned_genre_audio}'")
 
         if not cleaned_genre_audio:
             return jsonify({"genre_by_audio": "Could not determine genre from audio (API returned empty).", "preview_url": preview_url})
@@ -376,7 +326,6 @@ def analyze_audio_genre():
         return jsonify({"genre_by_audio": cleaned_genre_audio, "preview_url": preview_url})
 
     except req_lib.exceptions.HTTPError as e:
-        # (Error handling remains the same)
         print(f"Error during audio processing (HTTPError for download): {e.response.status_code if e.response else 'N/A'} - {e.response.text if e.response else 'No response text'}")
         status_code = e.response.status_code if e.response else 500
         error_reason = e.response.reason if e.response else "Unknown HTTP Error during audio processing"
@@ -384,15 +333,16 @@ def analyze_audio_genre():
     except req_lib.exceptions.RequestException as e:
         print(f"Error downloading audio: {e}")
         return jsonify({"error": f"Failed to download audio preview: {str(e)}"}), 500
-    except librosa.LibrosaError as e: 
+    except librosa.LibrosaError as e: # Catch specific librosa errors
         print(f"Librosa error during audio processing: {e}")
-        traceback.print_exc() 
+        traceback.print_exc() # Print full traceback for librosa errors
         return jsonify({"error": f"Audio processing error (librosa): {str(e)}"}), 500
     except Exception as e:
         print(f"Error during audio analysis (Unexpected): {e}")
-        traceback.print_exc() 
+        traceback.print_exc() # Print full traceback for unexpected errors
         return jsonify({"error": f"An unexpected error occurred during audio analysis: {str(e)}"}), 500
     finally:
+        # Ensure temporary file is deleted
         if temp_audio_file_path and os.path.exists(temp_audio_file_path):
             try:
                 os.remove(temp_audio_file_path)

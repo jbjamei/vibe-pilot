@@ -89,9 +89,7 @@
         const loadingSpinner = document.getElementById('loading-spinner');
         const songTitleInput = document.getElementById('song_title');
         const artistNameInput = document.getElementById('artist_name');
-        const userHintInput = document.getElementById('user_hint');
-
-        // --- Event Listeners ---
+        const userHintInput = document.getElementById('user_hint'); // // --- Event Listeners ---
         if (notRightBtn) {
             notRightBtn.addEventListener('click', handleNotRight);
         }
@@ -116,9 +114,11 @@
             areaElement.style.display = 'block';
         }
 
+
         async function handleNotRight() {
             const songTitle = songTitleInput.value;
             const artistName = artistNameInput.value;
+            // const userHintValue = userHintInput.value; // We'll get this fresh when we initiate audio analysis
 
             if (!songTitle || !artistName) {
                 alert('Please ensure song title and artist name are filled in.');
@@ -181,23 +181,17 @@
                     const previewUrl = this.dataset.previewUrl;
                     const trackName = this.dataset.trackName;
                     const artistName = this.dataset.artistName;
-                    const currentHintValue = userHintInput.value; 
-                    // CORRECTED: Call initiateAudioAnalysis and ensure line is not commented
-                    initiateAudioAnalysis(previewUrl, trackName, artistName, currentHintValue); 
-                }); // CORRECTED: Ensure this closing }); is for the event listener
+                    const currentHintValue = userHintInput.value; // initiateAudioAnalysis(previewUrl, trackName, artistName, currentHintValue); // });
             });
         }
 
-        async function initiateAudioAnalysis(previewUrl, trackName, artistName, userHint) {
-            // CORRECTED: Ensure this line is active
-            streamingSearchResultsDiv.innerHTML = ''; 
+        async function initiateAudioAnalysis(previewUrl, trackName, artistName, userHint) { // streamingSearchResultsDiv.innerHTML = ''; 
             audioAnalysisResultArea.style.display = 'none';
             audioAnalysisResultArea.innerHTML = '';
             showLoading(`Analyzing audio for "${trackName}"... This may take a moment.`);
 
             try {
-                // CORRECTED: Ensure payload is defined and not commented out
-                const payload = { 
+                // const payload = { 
                     preview_url: previewUrl,
                     song_title: trackName, 
                     artist_name: artistName,
