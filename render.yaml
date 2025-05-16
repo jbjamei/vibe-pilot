@@ -1,25 +1,21 @@
 services:
   - type: web
-    name: vibe-pilot          # Matches your service name in the screenshot
-    env: python               # You are using a Python environment
-    region: oregon            # From your screenshot (Oregon (US West))
-    plan: free                # From your screenshot (Free instance type)
+    name: vibe-pilot          # Should match your service name on Render
+    env: python
+    region: oregon            # Or your service's actual region
+    plan: free                # Or your current plan
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn app:app --timeout 120" # Increased timeout
-    healthCheckPath: /        # Good practice to have a health check
+    startCommand: "gunicorn app:app --timeout 300 --workers 1" # Timeout 300s, 1 worker
+    healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
-        value: "3.9"         # Or your specific Python 3.x version. Render will pick a recent patch.
+        value: "3.11"         # Match your Python version
       - key: GEMINI_API_KEY
-        fromSecret: true      # Assumes you have this set as a secret in Render's Environment settings
-      # Optional: For Numba caching issues later, if needed
-      # - key: NUMBA_CACHE_DIR
-      #   value: /tmp/numba_cache_render 
-      # - key: NUMBA_DISABLE_CACHING # Alternative way to disable Numba cache
-      #   value: "1"
+        fromSecret: true      # Ensure this secret is set in Render's Environment
+      - key: NUMBA_DISABLE_CACHING
+        value: "1"
+      - key: NUMBA_NUM_THREADS
+        value: "1"
     build:
-      packages: # For installing system packages like ffmpeg in Python Native Environments
+      packages: # For installing system packages
         - ffmpeg
-        # Consider adding these too if ffmpeg alone isn't enough, though ffmpeg is often sufficient:
-        # - libsndfile1-dev 
-        # - libmpg123-dev
