@@ -1,7 +1,33 @@
-venv/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+venv/
+.venv/
+env/
 .env
-*.sqlite3 # Good to add if you plan to use SQLite later
-instance/ # Flask instance folder
-.DS_Store # Mac specific
+instance/
+build/
+dist/
+*.log
+*.pot
+*.mo
+
+# Backups
+*.bak
+*.bak2 
+*.old
+*.orig
+*.v[0-9] # For .v3 etc. if that's a pattern you use
+
+# Cache files
+.cache/ # For generic .cache directories
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/ # If you use ruff
+
+# OS generated files
+.DS_Store
+Thumbs.db
