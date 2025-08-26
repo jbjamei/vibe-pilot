@@ -350,10 +350,10 @@ def analyze_audio_genre():
         if hasattr(gemini_response, 'text') and gemini_response.text:
             genre_text_audio = gemini_response.text
         elif gemini_response.candidates and \
-             response.candidates[0].content and \
-             response.candidates[0].content.parts and \
-             response.candidates[0].content.parts[0].text:
-            genre_text_audio = response.candidates[0].content.parts[0].text # Corrected to response, not gemini_response here if using the broader response structure
+             gemini_response.candidates[0].content and \
+             gemini_response.candidates[0].content.parts and \
+             gemini_response.candidates[0].content.parts[0].text:
+            genre_text_audio = gemini_response.candidates[0].content.parts[0].text
         else: # Fallback or if using direct text from gemini_response
             if hasattr(gemini_response, 'candidates') and \
                 gemini_response.candidates[0].content and \
