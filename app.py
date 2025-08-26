@@ -99,8 +99,13 @@ def get_music_genre(song_title, artist_name, user_hint=None): # Added user_hint
 
 # --- Audio Feature Extraction and Description ---
 def describe_audio_features(y, sr):
+    """Summarize key characteristics of an audio signal.
+
+    Extracts tempo, mean MFCC values, spectral centroid, zero-crossing rate,
+    spectral bandwidth and spectral rolloff to provide a concise description of
+    the clip's rhythm and timbral profile.
+    """
     description_parts = []
-    # (Feature extraction code remains the same as the last version)
     # Tempo
     try:
         tempo_val, _ = librosa.beat.beat_track(y=y, sr=sr)
@@ -192,7 +197,6 @@ def index():
 
 @app.route('/search_streaming', methods=['POST'])
 def search_streaming():
-    # This function remains the same as it's just for Deezer search
     data = request.get_json()
     song_title = data.get('song_title')
     artist_name = data.get('artist_name')
@@ -376,7 +380,6 @@ def analyze_audio_genre():
         return jsonify({"genre_by_audio": cleaned_genre_audio, "preview_url": preview_url})
 
     except req_lib.exceptions.HTTPError as e:
-        # (Error handling remains the same)
         print(f"Error during audio processing (HTTPError for download): {e.response.status_code if e.response else 'N/A'} - {e.response.text if e.response else 'No response text'}")
         status_code = e.response.status_code if e.response else 500
         error_reason = e.response.reason if e.response else "Unknown HTTP Error during audio processing"
