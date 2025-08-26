@@ -69,20 +69,20 @@ def get_music_genre(song_title, artist_name, user_hint=None): # Added user_hint
     """
     try:
         print(f"DEBUG: Sending text prompt to Gemini for: Song='{song_title}', Artist='{artist_name}', Hint='{user_hint or 'None'}'")
-        response = gemini_llm.generate_content(prompt)
-        
+        gemini_response = gemini_llm.generate_content(prompt)
+
         genre_text = ""
-        if hasattr(response, 'text') and response.text:
-            genre_text = response.text
-        elif response.candidates and \
-             response.candidates[0].content and \
-             response.candidates[0].content.parts and \
-             response.candidates[0].content.parts[0].text:
-            genre_text = response.candidates[0].content.parts[0].text
+        if hasattr(gemini_response, 'text') and gemini_response.text:
+            genre_text = gemini_response.text
+        elif gemini_response.candidates and \
+             gemini_response.candidates[0].content and \
+             gemini_response.candidates[0].content.parts and \
+             gemini_response.candidates[0].content.parts[0].text:
+            genre_text = gemini_response.candidates[0].content.parts[0].text
         else:
-            print(f"DEBUG: Could not extract text using common attributes. Full response: {response}")
-            if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
-                return f"Blocked by API (Text): {response.prompt_feedback.block_reason_message or response.prompt_feedback.block_reason}"
+            print(f"DEBUG: Could not extract text using common attributes. Full response: {gemini_response}")
+            if hasattr(gemini_response, 'prompt_feedback') and gemini_response.prompt_feedback and gemini_response.prompt_feedback.block_reason:
+                return f"Blocked by API (Text): {gemini_response.prompt_feedback.block_reason_message or gemini_response.prompt_feedback.block_reason}"
             return "Error: Failed to parse response from Gemini API (text). Check server logs."
 
         cleaned_genre = genre_text.strip().replace("*", "").replace("`", "")
@@ -354,7 +354,7 @@ def analyze_audio_genre():
              gemini_response.candidates[0].content.parts and \
              gemini_response.candidates[0].content.parts[0].text:
             genre_text_audio = gemini_response.candidates[0].content.parts[0].text
-        else: # Fallback or if using direct text from gemini_response
+        else:  # Fallback: attempt to extract text from candidates
             if hasattr(gemini_response, 'candidates') and \
                 gemini_response.candidates[0].content and \
                 gemini_response.candidates[0].content.parts and \
