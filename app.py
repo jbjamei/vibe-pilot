@@ -205,8 +205,8 @@ def search_streaming():
         return jsonify({"error": "Song title and artist name are required for streaming search"}), 400
 
     query = f'artist:"{artist_name}" track:"{song_title}"'
-    deezer_api_url = "https://api.deezer.com/search/track" 
-    params = {'q': query, 'limit': 10, 'output': 'json'} 
+    deezer_api_url = "https://api.deezer.com/search"
+    params = {'q': query, 'limit': 10}
 
     print(f"DEBUG: Searching Deezer with query: '{query}' at URL: {deezer_api_url}")
 
