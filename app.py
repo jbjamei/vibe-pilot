@@ -243,11 +243,31 @@ def search_streaming():
         print(f"DEBUG: Found {len(tracks)} tracks with previews on Deezer.")
         return jsonify(tracks)
     except req_lib.exceptions.HTTPError as e:
-        print(f"DEEZER SEARCH HTTP ERROR: {e.response.status_code if e.response else 'N/A'} - {e.response.text if e.response else 'No response text'}")
-        traceback.print_exc()
-        error_reason = e.response.reason if e.response else "Unknown HTTP Error"
+        # Log status code and raw response for troubleshooting
         status_code = e.response.status_code if e.response else 500
-        return jsonify({"error": f"Error searching on Deezer (HTTP {status_code}): {error_reason}"}), status_code
+        raw_text = e.response.text if e.response else 'No response text'
+        print(f"DEEZER SEARCH HTTP ERROR: {status_code} - {raw_text}")
+        traceback.print_exc()
+
+        # Prefer the HTTP reason phrase, but fall back to body content
+        reason = e.response.reason.strip() if e.response and e.response.reason else ''
+        body_detail = ''
+        if e.response:
+            print(f"DEBUG: Deezer error raw response: {raw_text}")
+            if not reason:
+                # Attempt to parse JSON body for more details
+                try:
+                    body_json = e.response.json()
+                    if isinstance(body_json, dict):
+                        body_detail = body_json.get('error') or str(body_json)
+                    else:
+                        body_detail = str(body_json)
+                except ValueError:
+                    # Fallback to raw text if body isn't JSON
+                    body_detail = raw_text
+
+        message_detail = reason or body_detail or 'Unknown HTTP Error'
+        return jsonify({"error": f"Error searching on Deezer (HTTP {status_code}): {message_detail}"}), status_code
     except req_lib.exceptions.RequestException as e:
         print(f"DEEZER SEARCH REQUEST ERROR: {e}")
         traceback.print_exc()
