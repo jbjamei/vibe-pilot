@@ -1,9 +1,13 @@
 import os
+import sys
 from unittest.mock import patch, Mock
 import pytest
 
 # Ensure the Gemini API is not invoked during tests
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
+
+# Ensure repository root is on the Python path for module imports
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 import app as app_module
 
@@ -82,4 +86,27 @@ def test_search_streaming_http_error(mock_get, client):
     assert response.status_code == 500
     assert response.get_json() == {
         "error": "Error searching on Deezer (HTTP 500): Server Error"
+    }
+
+
+@patch("app.req_lib.get")
+def test_search_streaming_http_error_no_reason(mock_get, client):
+    error_response = Mock()
+    error_response.status_code = 403
+    error_response.reason = ""  # Simulate missing reason
+    error_response.text = '{"error":"Quota exceeded"}'
+    error_response.json.return_value = {"error": "Quota exceeded"}
+
+    http_error = req_lib.exceptions.HTTPError(response=error_response)
+
+    mock_response = Mock()
+    mock_response.raise_for_status.side_effect = http_error
+    mock_get.return_value = mock_response
+
+    response = client.post(
+        "/search_streaming", json={"song_title": "Song", "artist_name": "Artist"}
+    )
+    assert response.status_code == 403
+    assert response.get_json() == {
+        "error": "Error searching on Deezer (HTTP 403): Quota exceeded",
     }
