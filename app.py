@@ -17,7 +17,8 @@ try:
         gemini_llm = None
     else:
         genai.configure(api_key=gemini_api_key)
-        gemini_model_name = 'models/gemini-2.0-flash' # Your chosen Gemini model
+        # Use the Gemini 1.5 Pro model for improved reasoning capabilities
+        gemini_model_name = 'models/gemini-1.5-pro'
         gemini_llm = genai.GenerativeModel(gemini_model_name)
         print(f"Gemini API configured successfully with model: {gemini_model_name}")
 except Exception as e:
