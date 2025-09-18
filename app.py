@@ -2,6 +2,7 @@
 
 import os
 import google.generativeai as genai
+from google.api_core.exceptions import ResourceExhausted
 from flask import Flask, render_template, request
 from dotenv import load_dotenv
 import traceback
@@ -84,6 +85,10 @@ def get_music_genre(song_title, artist_name, user_hint=None): # Added user_hint
         if not cleaned_genre:
             return "Could not determine genre (API returned empty or only formatting characters)."
         return cleaned_genre
+    except ResourceExhausted as err:
+        print(f"ERROR: Gemini API quota exceeded for '{song_title}' by '{artist_name}': {err}")
+        traceback.print_exc()
+        return "Gemini API quota exceeded. Please try again later."
     except Exception as e:
         print(f"ERROR in get_music_genre for '{song_title}' by '{artist_name}': {e}")
         traceback.print_exc()
